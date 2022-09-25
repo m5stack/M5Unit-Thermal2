@@ -1,0 +1,17 @@
+{
+  "name": "M5Unit-Thermal2",
+  "description": "Library for M5Stack UNIT Thermal2",
+  "keywords": "M5Stack UNIT Thermal2",
+  "authors": {
+    "name": "M5Stack",
+    "url": "http://www.m5stack.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m5stack/M5Unit-Thermal2.git"
+  },
+  "version": "0.0.1",
+  "frameworks": "arduino",
+  "headers": "M5_Thermal2.h",
+  "platforms": "espressif32"
+}
