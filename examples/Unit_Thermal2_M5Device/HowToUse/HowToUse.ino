@@ -99,7 +99,7 @@ void loop(void) {
         frame_count++;
 
         // Obtain temperature data structure.
-        auto tempdata = thermal2.getTemperatureData();
+        auto &tempdata = thermal2.getTemperatureData();
 
         // Pixel data is held in an array. Array size is 384. (16x24)
         for (int idx = 0; idx < 384; ++idx) {
