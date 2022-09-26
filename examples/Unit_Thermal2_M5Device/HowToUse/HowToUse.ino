@@ -99,7 +99,13 @@ void loop(void) {
         frame_count++;
 
         // Obtain temperature data structure.
-        auto &tempdata = thermal2.getTemperatureData();
+        auto temp_data = thermal2.getTemperatureData();
+
+        // `getLowestTemperature` and `getHighestTemperature` of type float has
+        // temperature in degrees Celsius.
+        float lowest_temp  = temp_data.getLowestTemperature();
+        float highest_temp = temp_data.getHighestTemperature();
+        float temp_diff    = highest_temp - lowest_temp;
 
         // Pixel data is held in an array. Array size is 384. (16x24)
         for (int idx = 0; idx < 384; ++idx) {
@@ -121,14 +127,10 @@ void loop(void) {
             23□ ■ □ ■ … □ ■ □ ■
             */
             int y = idx >> 4;
-            int x = ((idx & 15) << 1) + ((y & 1) != tempdata.subpage);
+            int x = ((idx & 15) << 1) + ((y & 1) != temp_data.getSubPage());
 
-            // `array_data` of type float has temperature in degrees Celsius.
-            // `lowest_temp` and `highest_temp` are also type float has
-            // temperature in degrees Celsius.
-            float t = tempdata.array_data[idx] - tempdata.lowest_temp;
-            int level =
-                t * 256 / (tempdata.highest_temp - tempdata.lowest_temp);
+            float t   = temp_data.getPixelTemperature(idx) - lowest_temp;
+            int level = t * 256 / temp_diff;
 
             level          = (level < 0) ? 0 : (level > 255) ? 255 : level;
             uint32_t color = M5.Display.color888(level, level, level);
@@ -136,26 +138,29 @@ void loop(void) {
         }
 
         // Lowest temperature pixel.
-        M5.Display.drawRect(64 + tempdata.lowest_x * 3, tempdata.lowest_y * 3,
-                            3, 3, TFT_BLUE);
+        M5.Display.drawRect(64 + temp_data.getLowestX() * 3,
+                            temp_data.getLowestY() * 3, 3, 3, TFT_BLUE);
 
         // Highest temperature pixel.
-        M5.Display.drawRect(64 + tempdata.highest_x * 3, tempdata.highest_y * 3,
-                            3, 3, TFT_YELLOW);
+        M5.Display.drawRect(64 + temp_data.getHighestX() * 3,
+                            temp_data.getHighestY() * 3, 3, 3, TFT_YELLOW);
 
         // Most temperature differences pixel.
-        M5.Display.drawRect(64 + tempdata.most_diff_x * 3,
-                            tempdata.most_diff_y * 3, 3, 3, TFT_PURPLE);
+        M5.Display.drawRect(64 + temp_data.getMostDifferenceX() * 3,
+                            temp_data.getMostDifferenceY() * 3, 3, 3,
+                            TFT_PURPLE);
 
         static int prev_sec = ~0u;
         int sec             = millis() / 1000;
         if (prev_sec != sec) {
             prev_sec = sec;
             M5.Display.setCursor(0, 8);
-            M5.Display.printf("avg: %5.2f\n", tempdata.average_temp);
-            M5.Display.printf("med: %5.2f\n", tempdata.median_temp);
-            M5.Display.printf("high:%5.2f\n", tempdata.highest_temp);
-            M5.Display.printf("low: %5.2f\n", tempdata.lowest_temp);
+            M5.Display.printf("avg: %5.2f\n",
+                              temp_data.getAverageTemperature());
+            M5.Display.printf("med: %5.2f\n", temp_data.getMedianTemperature());
+            M5.Display.printf("high:%5.2f\n",
+                              temp_data.getHighestTemperature());
+            M5.Display.printf("low: %5.2f\n", temp_data.getLowestTemperature());
             M5.Display.printf("fps: %02d\n", frame_count);
             frame_count = 0;
         }

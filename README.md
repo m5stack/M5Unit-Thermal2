@@ -38,12 +38,27 @@ void loop(void) {
 
     // Update button status and image data.
     if (thermal2.update()) {
-        auto &tempdata = thermal2.getTemperatureData();
+        auto temp_data = thermal2.getTemperatureData();
 
-        printf("avg :%5.2f  ", tempdata.average_temp);
-        printf("med :%5.2f  ", tempdata.median_temp);
-        printf("high:%5.2f  ", tempdata.highest_temp);
-        printf("low :%5.2f\n", tempdata.lowest_temp);
+        printf("center  :%5.2f  ", temp_data.getPixelTemperature(200));
+        printf("avgerage:%5.2f  ", temp_data.getAverageTemperature());
+        printf("median  :%5.2f  ", temp_data.getMedianTemperature());
+        printf("highest :%5.2f  ", temp_data.getHighestTemperature());
+        printf("lowest  :%5.2f\n", temp_data.getLowestTemperature());
+    }
+
+    // Determines if a button was pressed. (True only when pressed.)
+    if (thermal2.btnWasPressed()) {
+        // Led on , Buzzer on
+        thermal2.ledOn();
+        thermal2.buzzerOn();
+    }
+
+    // Determines if a button was released. (True only when released.)
+    if (thermal2.btnWasReleased()) {
+        // Led off , Buzzer off
+        thermal2.ledOff();
+        thermal2.buzzerOff();
     }
 }
 ```

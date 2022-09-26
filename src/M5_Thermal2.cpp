@@ -96,47 +96,35 @@ bool M5_Thermal2::update(void) {
     _wire->write(reg_index_overview);
     bool result = (0 == _wire->endTransmission(false));
     if (result) {
-        overview_reg_t ov;
-        result = (sizeof(overview_reg_t) ==
-                  _wire->requestFrom(_addr, sizeof(overview_reg_t), true)) &&
-                 (sizeof(overview_reg_t) ==
-                  _wire->readBytes((uint8_t*)&ov, sizeof(overview_reg_t)));
+        result = (sizeof(temperature_reg_t) ==
+                  _wire->requestFrom(_addr, sizeof(temperature_reg_t))) &&
+                 (sizeof(temperature_reg_t) ==
+                  _wire->readBytes((uint8_t*)&(_latest_raw.temperature_reg),
+                                   sizeof(temperature_reg_t)));
 
-        _latest_temp_info.median_temp    = convertRawToCelsius(ov.median_raw);
-        _latest_temp_info.average_temp   = convertRawToCelsius(ov.average_raw);
-        _latest_temp_info.lowest_temp    = convertRawToCelsius(ov.lowest_raw);
-        _latest_temp_info.highest_temp   = convertRawToCelsius(ov.highest_raw);
-        _latest_temp_info.most_diff_temp = (float)ov.most_diff_raw / 128;
-        _latest_temp_info.most_diff_x    = ov.most_diff_x;
-        _latest_temp_info.most_diff_y    = ov.most_diff_y;
-        _latest_temp_info.lowest_x       = ov.lowest_x;
-        _latest_temp_info.lowest_y       = ov.lowest_y;
-        _latest_temp_info.highest_x      = ov.highest_x;
-        _latest_temp_info.highest_y      = ov.highest_y;
-        _latest_temp_info.subpage        = subpage;
+        _latest_raw.subpage = subpage;
 
-        uint16_t temp_raw[64];
-        float* dst = _latest_temp_info.array_data;
-        for (size_t i = 0; result && i < 6; ++i) {
-            result = (sizeof(temp_raw) ==
-                      _wire->requestFrom(_addr, sizeof(temp_raw), true)) &&
-                     (sizeof(temp_raw) ==
-                      _wire->readBytes((uint8_t*)temp_raw, sizeof(temp_raw)));
-            for (size_t j = 0; j < 64; ++j) {
-                *dst++ = convertRawToCelsius(temp_raw[j]);
-            }
+        static constexpr uint8_t i2c_once_read = 128;
+        static constexpr uint8_t read_count    = 768 / i2c_once_read;
+
+        auto dst = (uint8_t*)_latest_raw.pixel_raw;
+        for (uint_fast8_t i = 0; result && i < read_count; ++i) {
+            result = (i2c_once_read ==
+                      _wire->requestFrom(_addr, i2c_once_read)) &&
+                     (i2c_once_read == _wire->readBytes(dst, i2c_once_read));
+            dst += i2c_once_read;
         }
     }
 
-    if (result && 0 == (_config.function_ctrl & 0x04)) {
+    if (result && (0 == (_config.function_ctrl & 0x04))) {
         _wire->beginTransmission(_addr);
         _wire->write(reg_index_refresh_control);
         _wire->write(0);
-        result = (0 == _wire->endTransmission(true));
+        result = (0 == _wire->endTransmission(true)) &&
+                 (_latest_raw.temperature_reg.lowest_raw <
+                  _latest_raw.temperature_reg.highest_raw);
     }
-
-    return result &&
-           _latest_temp_info.lowest_temp < _latest_temp_info.highest_temp;
+    return result;
 }
 
 bool M5_Thermal2::buzzerOn(void) {

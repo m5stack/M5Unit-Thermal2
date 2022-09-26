@@ -80,21 +80,7 @@ class M5_Thermal2 {
         button_was_hold     = 1 << 4,
     };
 
-    struct temperature_info_t {
-        float median_temp;
-        float average_temp;
-        float lowest_temp;
-        float highest_temp;
-        float most_diff_temp;
-        uint8_t lowest_x;
-        uint8_t lowest_y;
-        uint8_t highest_x;
-        uint8_t highest_y;
-        uint8_t most_diff_x;
-        uint8_t most_diff_y;
-        bool subpage;
-        float array_data[384];
-    };
+    struct temperature_data_t;
 
     /*! @brief Initialize the Unit Thermal2.
         @param wire Pointer to Wire to be used.
@@ -112,8 +98,8 @@ class M5_Thermal2 {
 
     /*! @brief Get temperature data from the last update.
         @return true:success / false:failure */
-    inline const temperature_info_t& getTemperatureData(void) {
-        return _latest_temp_info;
+    inline const temperature_data_t& getTemperatureData(void) {
+        return _latest_raw;
     }
 
     /*! @brief Change the refresh rate of the camera.
@@ -279,6 +265,87 @@ class M5_Thermal2 {
 #pragma pack(push)
 #pragma pack(1)
 
+    struct temperature_reg_t {
+        uint16_t median_raw;
+        uint16_t average_raw;
+        uint16_t most_diff_raw;
+        uint8_t most_diff_x;
+        uint8_t most_diff_y;
+        uint16_t lowest_raw;
+        uint8_t lowest_x;
+        uint8_t lowest_y;
+        uint16_t highest_raw;
+        uint8_t highest_x;
+        uint8_t highest_y;
+    };
+
+    struct temperature_data_t {
+        inline bool getSubPage(void) const {
+            return subpage;
+        }
+
+        inline float getPixelTemperature(uint_fast16_t index) const {
+            return convertRawToCelsius((index < 384) ? pixel_raw[index] : 0);
+        }
+        inline float getLowestTemperature(void) const {
+            return convertRawToCelsius(temperature_reg.lowest_raw);
+        }
+        inline float getHighestTemperature(void) const {
+            return convertRawToCelsius(temperature_reg.highest_raw);
+        }
+        inline float getMedianTemperature(void) const {
+            return convertRawToCelsius(temperature_reg.median_raw);
+        }
+        inline float getAverageTemperature(void) const {
+            return convertRawToCelsius(temperature_reg.average_raw);
+        }
+        inline float getMostDifferenceTemperature(void) const {
+            return ((float)temperature_reg.most_diff_raw) / 128;
+        }
+
+        inline uint16_t getPixelRaw(uint_fast16_t index) const {
+            return (index < 384) ? pixel_raw[index] : 0;
+        }
+        inline uint16_t getLowestRaw(void) const {
+            return temperature_reg.lowest_raw;
+        }
+        inline uint16_t getHighestRaw(void) const {
+            return temperature_reg.highest_raw;
+        }
+        inline uint16_t getMedianRaw(void) const {
+            return temperature_reg.median_raw;
+        }
+        inline uint16_t getAverageRaw(void) const {
+            return temperature_reg.average_raw;
+        }
+        inline uint16_t getMostDifferenceRaw(void) const {
+            return temperature_reg.most_diff_raw;
+        }
+
+        inline uint8_t getLowestX(void) const {
+            return temperature_reg.lowest_x;
+        }
+        inline uint8_t getLowestY(void) const {
+            return temperature_reg.lowest_y;
+        }
+        inline uint8_t getHighestX(void) const {
+            return temperature_reg.highest_x;
+        }
+        inline uint8_t getHighestY(void) const {
+            return temperature_reg.highest_y;
+        }
+        inline uint8_t getMostDifferenceX(void) const {
+            return temperature_reg.most_diff_x;
+        }
+        inline uint8_t getMostDifferenceY(void) const {
+            return temperature_reg.most_diff_y;
+        }
+
+        temperature_reg_t temperature_reg;
+        uint16_t pixel_raw[384];
+        bool subpage;
+    };
+
     struct rgb_t {
         uint8_t r;
         uint8_t g;
@@ -340,20 +407,6 @@ class M5_Thermal2 {
         alarm_reg_t highest_alarm;
     };
 
-    struct overview_reg_t {
-        uint16_t median_raw;
-        uint16_t average_raw;
-        uint16_t most_diff_raw;
-        uint8_t most_diff_x;
-        uint8_t most_diff_y;
-        uint16_t lowest_raw;
-        uint8_t lowest_x;
-        uint8_t lowest_y;
-        uint16_t highest_raw;
-        uint8_t highest_x;
-        uint8_t highest_y;
-    };
-
 #pragma pack(pop)
 
    private:
@@ -362,8 +415,7 @@ class M5_Thermal2 {
     uint16_t _addr;
     uint8_t _init_step = 0;
 
-    temperature_info_t _latest_temp_info;
-
+    temperature_data_t _latest_raw;
     status_reg_t _status;
     config_reg_t _config;
     alarm_reg_t _lowest_alarm;
