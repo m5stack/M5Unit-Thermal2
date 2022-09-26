@@ -109,9 +109,9 @@ bool M5_Thermal2::update(void) {
 
         auto dst = (uint8_t*)_latest_raw.pixel_raw;
         for (uint_fast8_t i = 0; result && i < read_count; ++i) {
-            result = (i2c_once_read ==
-                      _wire->requestFrom(_addr, i2c_once_read)) &&
-                     (i2c_once_read == _wire->readBytes(dst, i2c_once_read));
+            result =
+                (i2c_once_read == _wire->requestFrom(_addr, i2c_once_read)) &&
+                (i2c_once_read == _wire->readBytes(dst, i2c_once_read));
             dst += i2c_once_read;
         }
     }
