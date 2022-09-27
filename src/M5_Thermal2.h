@@ -84,13 +84,33 @@ class M5_Thermal2 {
 
     /*! @brief Initialize the Unit Thermal2.
         @param wire Pointer to Wire to be used.
-        @param addr I2C address of UnitThermal2.
-        @param freq I2C communication frequency.
-               ※ Higher frequencies are automatically used depending on the
-       camera's sampling rate. 16Hz=200kHz  /  32Hz=400kHz  /  64Hz=800kHz
+        @param i2c_addr I2C address of UnitThermal2.
+        @param i2c_freq I2C communication frequency.
+        @param i2c_freq_pixelread I2C communication frequency (for read pixel).
+                ※ If the sampling rate of the camera is increased,
+                    read pixel speed should also be increased.
+                    16Hz=200kHz  /  32Hz=400kHz /  64Hz=800kHz
+
+                ※ Note that if the frequency is higher than 400 kHz, the rate of
+                    communication errors will increase depending on conditions
+                    such as the quality of the communication cable and the
+                    presence of other devices.
         @return true:success / false:failure */
-    int begin(TwoWire* wire = &Wire, uint8_t addr = i2c_default_addr,
-              uint32_t freq = 100000);
+    int begin(TwoWire* wire = &Wire, uint8_t i2c_addr = i2c_default_addr,
+              uint32_t i2c_freq = 0, uint32_t i2c_freq_pixelread = 0);
+
+    /*! @brief Set the I2C communication speed.
+        @param i2c_freq I2C communication frequency.
+        @param i2c_freq_pixelread I2C communication frequency (for read pixel).
+                ※ If the sampling rate of the camera is increased,
+                    read pixel speed should also be increased.
+                    16Hz=200kHz  /  32Hz=400kHz /  64Hz=800kHz
+
+                ※ Note that if the frequency is higher than 400 kHz, the rate of
+                    communication errors will increase depending on conditions
+                    such as the quality of the communication cable and the
+                    presence of other devices. */
+    void setI2CFreq(uint32_t freq, uint32_t freq_pixelread = 0);
 
     /*! @brief Update temperature data and button state.
         @return true:success / false:failure */
@@ -410,10 +430,11 @@ class M5_Thermal2 {
 #pragma pack(pop)
 
    private:
-    TwoWire* _wire;
-    uint32_t _freq;
-    uint16_t _addr;
-    uint8_t _init_step = 0;
+    TwoWire* _wire           = nullptr;
+    uint32_t _freq           = 400000;
+    uint32_t _freq_pixelread = 400000;
+    uint16_t _addr           = i2c_default_addr;
+    uint8_t _init_step       = 0;
 
     temperature_data_t _latest_raw;
     status_reg_t _status;

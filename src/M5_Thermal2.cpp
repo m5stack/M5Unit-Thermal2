@@ -9,21 +9,31 @@ class i2c_clock_changer {
         _prev_freq = wire->getClock();
         wire->setClock(freq);
     }
-    virtual ~i2c_clock_changer() {
+    ~i2c_clock_changer() {
         _wire->setClock(_prev_freq);
     }
 };
 
-int M5_Thermal2::begin(TwoWire* wire, uint8_t addr, uint32_t freq) {
+int M5_Thermal2::begin(TwoWire* wire, uint8_t addr, uint32_t freq,
+                       uint32_t freq_pixelread) {
+    setI2CFreq(freq, freq_pixelread);
     _wire      = wire;
     _addr      = addr;
-    _freq      = freq;
     _init_step = 1;
     int retry  = 16;
+
+    // UnitThermal2 takes more than 100msec to start up.
     while (!_checkInit() && --retry) {
         delay(16);
     }
     return retry;
+}
+
+void M5_Thermal2::setI2CFreq(uint32_t freq, uint32_t freq_pixelread) {
+    if (freq) {
+        _freq = freq;
+    }
+    _freq_pixelread = (_freq > freq_pixelread) ? _freq : freq_pixelread;
 }
 
 bool M5_Thermal2::_checkInit(void) {
@@ -45,6 +55,10 @@ bool M5_Thermal2::_checkInit(void) {
             _config        = reg.config;
             _lowest_alarm  = reg.lowest_alarm;
             _highest_alarm = reg.highest_alarm;
+
+            if (!(_config.function_ctrl & 0x04)) {
+                _config.function_ctrl |= 0x04;
+            }
         }
     }
     return (_init_step > 1);
@@ -65,11 +79,7 @@ bool M5_Thermal2::_updateConfig(void) {
 bool M5_Thermal2::update(void) {
     if (!_checkInit()) return false;
 
-    uint32_t need_clock = 6250u << getRefreshRate();
-    if (need_clock < _freq) {
-        need_clock = _freq;
-    }
-    i2c_clock_changer i2cc = {_wire, need_clock};
+    i2c_clock_changer i2cc = {_wire, _freq};
 
     _wire->beginTransmission(_addr);
     _wire->write(reg_index_status);
@@ -94,15 +104,19 @@ bool M5_Thermal2::update(void) {
 
     _wire->beginTransmission(_addr);
     _wire->write(reg_index_overview);
-    bool result = (0 == _wire->endTransmission(false));
+    temperature_reg_t tempreg;
+    bool result =
+        (0 == _wire->endTransmission(true)) &&
+        (sizeof(temperature_reg_t) ==
+         _wire->requestFrom(_addr, sizeof(temperature_reg_t))) &&
+        (sizeof(temperature_reg_t) ==
+         _wire->readBytes((uint8_t*)&(tempreg), sizeof(temperature_reg_t)));
     if (result) {
-        result = (sizeof(temperature_reg_t) ==
-                  _wire->requestFrom(_addr, sizeof(temperature_reg_t))) &&
-                 (sizeof(temperature_reg_t) ==
-                  _wire->readBytes((uint8_t*)&(_latest_raw.temperature_reg),
-                                   sizeof(temperature_reg_t)));
-
-        _latest_raw.subpage = subpage;
+        if (_freq < _freq_pixelread) {
+            _wire->setClock(_freq_pixelread);
+        }
+        _latest_raw.temperature_reg = tempreg;
+        _latest_raw.subpage         = subpage;
 
         static constexpr uint8_t i2c_once_read = 128;
         static constexpr uint8_t read_count    = 768 / i2c_once_read;
@@ -120,11 +134,10 @@ bool M5_Thermal2::update(void) {
         _wire->beginTransmission(_addr);
         _wire->write(reg_index_refresh_control);
         _wire->write(0);
-        result = (0 == _wire->endTransmission(true)) &&
-                 (_latest_raw.temperature_reg.lowest_raw <
-                  _latest_raw.temperature_reg.highest_raw);
+        result = (0 == _wire->endTransmission(true));
     }
-    return result;
+    return result && (_latest_raw.temperature_reg.lowest_raw <
+                      _latest_raw.temperature_reg.highest_raw);
 }
 
 bool M5_Thermal2::buzzerOn(void) {

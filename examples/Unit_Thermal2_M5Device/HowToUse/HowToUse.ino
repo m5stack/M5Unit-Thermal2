@@ -17,14 +17,21 @@ void setup(void) {
     // Wire.begin((int)SDA, (int)SCL, 100000u);
 
     // Call begin once first.
-    // Arguments can specify the instance of Wire, Unit's I2C address, and
-    // communication frequency. thermal2.begin(&Wire, 0x32, 100000);
+    // Arguments can specify the instance of Wire, Unit's I2C address,
+    // communication frequency, and pixel read communication frequency.
+    // thermal2.begin(&Wire, 0x32, 400000, 400000);
     thermal2.begin();
 
     // Sampling rate can be specified with values from 0~7.
     // The higher the sampling rate, the more noise is generated.
     // 0=1/2Hz  1=1Hz  2=2Hz  3=4Hz  4=8Hz  5=16Hz  6=32Hz  7=64Hz
     thermal2.setRefreshRate(6);
+
+    // ※ When using 64Hz, the I2C communication speed must be set to 800kHz or
+    // higher. This will result in a speed that deviates from the I2C standard,
+    // so operation is not guaranteed.
+    // thermal2.setRefreshRate(7);
+    // thermal2.setI2CFreq(400000, 800000);
 
     // Noise filter strength can be specified from 0~15.  (0=disable noise
     // filter.)
