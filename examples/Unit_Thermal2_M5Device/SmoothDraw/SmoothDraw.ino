@@ -518,7 +518,7 @@ class image_ui_t : public ui_base_t {
                         &((m5gfx::swap565_t*)
                               img->getBuffer())[x0 + by * img->width()];
                     for (int bx = 0; bx < boxWidth; ++bx) {
-                        int v = (v02 * (boxWidth - bx) + v13 * bx) >> 8;
+                        int v       = (v02 * (boxWidth - bx) + v13 * bx) >> 8;
                         img_buf[bx] = m5gfx::getSwap16(
                             (param->color_map[(v < 0)     ? 0
                                               : (v > 255) ? 255
