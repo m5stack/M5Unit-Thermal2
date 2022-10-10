@@ -28,7 +28,7 @@ void setup(void) {
     thermal2.setRefreshRate(6);
 
     // ※ When using 64Hz, the I2C communication speed must be set to 800kHz or
-    // higher. This will result in a speed that deviates from the I2C standard,
+    // higher. This will result in a speed that deviates from the I2C Fast-mode,
     // so operation is not guaranteed.
     // thermal2.setRefreshRate(7);
     // thermal2.setI2CFreq(400000, 800000);
