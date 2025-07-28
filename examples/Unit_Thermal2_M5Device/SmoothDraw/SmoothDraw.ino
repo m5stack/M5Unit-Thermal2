@@ -185,6 +185,9 @@ static constexpr const size_t color_map_table_len =
     (sizeof(color_map_table) / sizeof(color_map_table[0]));
 volatile size_t color_map_table_idx = 0;
 
+// Add horizontal flip functionality
+bool horizontal_flip = true;  // Set to true to flip horizontally
+
 struct framedata_t {
     enum {
         median,
@@ -448,21 +451,23 @@ class image_ui_t : public ui_base_t {
         int mark_y = frame_height >> 1;
         switch (param->marker_mode) {
             case param->marker_mode_lowest:
-                mark_x = param->frame->low_x;
+                mark_x = horizontal_flip ? (frame_width - 1 - param->frame->low_x) : param->frame->low_x;
                 mark_y = param->frame->low_y;
                 break;
 
             case param->marker_mode_highest:
-                mark_x = param->frame->high_x;
+                mark_x = horizontal_flip ? (frame_width - 1 - param->frame->high_x) : param->frame->high_x;
                 mark_y = param->frame->high_y;
                 break;
 
             default:
                 break;
         }
+        // Use original coordinates for data access, flipped coordinates for display
+        int data_mark_x = horizontal_flip ? (frame_width - 1 - mark_x) : mark_x;
         if (_marker.update(
                 mark_x, mark_y,
-                param->frame->pixel_raw[mark_x + (frame_width * mark_y)],
+                param->frame->pixel_raw[data_mark_x + (frame_width * mark_y)],
                 _client_rect)) {
             invalidate();
         }
@@ -483,12 +488,13 @@ class image_ui_t : public ui_base_t {
                 _client_rect.w, (_client_rect.h - 1) / (frame_height - 1) + 1);
 
             int v0;
-            int v1 = ((param->frame->pixel_raw[(fy - 1) * frame_width] -
+            int fx_data_init = horizontal_flip ? (frame_width - 1) : 0;
+            int v1 = ((param->frame->pixel_raw[fx_data_init + (fy - 1) * frame_width] -
                        param->temp_lowest)
                       << 16) /
                      boxHeight;
             int v2;
-            int v3 = ((param->frame->pixel_raw[(fy)*frame_width] -
+            int v3 = ((param->frame->pixel_raw[fx_data_init + (fy)*frame_width] -
                        param->temp_lowest)
                       << 16) /
                      boxHeight;
@@ -499,12 +505,13 @@ class image_ui_t : public ui_base_t {
                 x1           = (fx * _client_rect.w) / (frame_width - 1);
                 int boxWidth = x1 - x0;
                 v0           = v1;
-                v1 = ((param->frame->pixel_raw[fx + (fy - 1) * frame_width] -
+                int fx_data = horizontal_flip ? (frame_width - 1 - fx) : fx;
+                v1 = ((param->frame->pixel_raw[fx_data + (fy - 1) * frame_width] -
                        param->temp_lowest)
                       << 16) /
                      boxHeight;
                 v2 = v3;
-                v3 = ((param->frame->pixel_raw[fx + (fy)*frame_width] -
+                v3 = ((param->frame->pixel_raw[fx_data + (fy)*frame_width] -
                        param->temp_lowest)
                       << 16) /
                      boxHeight;
@@ -1127,6 +1134,7 @@ void loop(void) {
     bool color_change  = M5.BtnA.wasClicked();
     bool marker_change = M5.BtnB.wasClicked();
     bool layout_change = M5.BtnC.wasClicked() || M5.BtnA.wasHold();
+    bool flip_change   = M5.BtnB.wasHold() || M5.BtnC.wasHold();
 
     if (M5.Touch.isEnabled()) {
         auto dt = M5.Touch.getDetail();
@@ -1152,6 +1160,9 @@ void loop(void) {
     }
     if (marker_change) {
         draw_param.markerChange();
+    }
+    if (flip_change) {
+        horizontal_flip = !horizontal_flip;
     }
 
     if (!thermal2.update()) {
